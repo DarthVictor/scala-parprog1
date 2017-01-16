@@ -59,31 +59,29 @@ object ParallelParenthesesBalancing {
    */
   def parBalance(chars: Array[Char], threshold: Int): Boolean = {
 
-//    def traverse(idx: Int, until: Int, arg1: Int, arg2: Int) /*: ???*/ = {
-//      ???
-//    }
+    def traverse(from: Int, until: Int) : (Int, Int) = {
+      var i = from
+      var balance = 0
+      var min = 0
+      while(i < until){
+        val char = chars(i)
+        if(char == '(') balance += 1
+        else if(char == ')') {
+          balance -= 1
+          if(balance < min) min = balance
+        }
+        i += 1
+      }
+      (balance, min)
+    }
 
     def reduce(from: Int, until: Int) : (Int, Int) = {
       if(until - from < threshold || until - from < 2){
-          var i = from
-          var balance = 0
-          var min = 0
-          while(i < until){
-              val char = chars(i)
-              if(char == '(') balance += 1
-              else if(char == ')') {
-                balance -= 1
-                if(balance < min) min = balance
-              }
-              i += 1
-          }
-          (balance, min)
+          traverse(from, until)
       }
       else{
-          val middle = (from + until) / 2
+          val middle = from + (until - from) / 2
           val (left, right) = parallel(reduce(from, middle), reduce(middle, until))
-        //println(chars.toString, from, until)
-        //println(left, right)
           val min = math.min(left._2, left._1 + right._2)
           val balance = left._1 + right._1
           (balance, min)
