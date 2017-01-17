@@ -34,15 +34,17 @@ object LineOfSight {
   def max(a: Float, b: Float): Float = if (a > b) a else b
 
   def lineOfSight(input: Array[Float], output: Array[Float]): Unit = {
-      output(0) = 0
-      output(1) = input(1)
-      var maxAngle = input(1)
-      var i = 2
-      while(i < input.length){
-          val currentAngle = input(i) / (i*1f)
-          maxAngle = math.max(currentAngle, maxAngle)
-          output(i) = maxAngle
-          i += 1
+      output(0) = input(0)
+      if(input.length > 1){
+          output(1) = input(1)
+          var maxAngle = input(1)
+          var i = 2
+          while(i < input.length){
+              val currentAngle = input(i) / (i*1f)
+              maxAngle = math.max(currentAngle, maxAngle)
+              output(i) = maxAngle
+              i += 1
+          }
       }
   }
 
@@ -79,8 +81,8 @@ object LineOfSight {
    */
   def upsweep(input: Array[Float], from: Int, end: Int,
     threshold: Int): Tree = {
-      if(end - from < threshold){
-          Leaf(from, end, upsweepSequential(input, from, end))
+      if(end - from <= threshold){
+          return Leaf(from, end, upsweepSequential(input, from, end))
       }
       else {
           val mid = from + (end - from)/2
@@ -88,7 +90,7 @@ object LineOfSight {
               upsweep(input, from, mid, threshold),
               upsweep(input, mid, end, threshold)
           )
-          Node(tL, tR)
+          return Node(tL, tR)
       }
   }
 
@@ -116,7 +118,7 @@ object LineOfSight {
     tree: Tree): Unit = {
     tree match {
       case Leaf(from, until, maxPrevious) =>
-        downsweepSequential(input, output, maxPrevious, from, until)
+        downsweepSequential(input, output, math.max(startingAngle, maxPrevious), from, until)
       case Node(left, right) => {
         val (_,_) = parallel(
           downsweep(input, output, startingAngle, left),
@@ -129,8 +131,10 @@ object LineOfSight {
   /** Compute the line-of-sight in parallel. */
   def parLineOfSight(input: Array[Float], output: Array[Float],
     threshold: Int): Unit = {
-    val tree = upsweep(input, 1, input.length, threshold)
-    downsweep(input, output, input(0), tree)
+    if(input.length > 1) {
+        val tree = upsweep(input, 1, input.length, threshold)
+        downsweep(input, output, input(0), tree)
+    }
     output(0) = input(0)
   }
 }
