@@ -155,9 +155,22 @@ package object barneshut {
           // no force
         case Leaf(_, _, _, bodies) =>
           // add force contribution of each body by calling addForce
+          for( body <- bodies){
+            addForce(body.mass, body.x, body.y)
+          }
         case Fork(nw, ne, sw, se) =>
+          if (quad.size / distance(quad.centerX, quad.centerY, x, y) < theta){
+            addForce(quad.mass, quad.centerX, quad.centerY)
+          }
+          else{
+            addForce(nw.mass, nw.centerX, nw.centerY)
+            addForce(ne.mass, ne.centerX, ne.centerY)
+            addForce(sw.mass, sw.centerX, sw.centerY)
+            addForce(se.mass, se.centerX, se.centerY)
+          }
           // see if node is far enough from the body,
           // or recursion is needed
+
       }
 
       traverse(quad)
@@ -180,14 +193,24 @@ package object barneshut {
     for (i <- 0 until matrix.length) matrix(i) = new ConcBuffer
 
     def +=(b: Body): SectorMatrix = {
-      ???
+      val bodyX = Math.min(Math.max(boundaries.minX, b.x), boundaries.maxX)
+      val bodyY = Math.min(Math.max(boundaries.minY, b.y), boundaries.maxY)
+      val body = if(bodyX != b.x || bodyY != b.y) new Body(b.mass, bodyX, bodyY, b.xspeed, b.yspeed) else b
+      val x = ((bodyX - boundaries.minX)/sectorSize).toInt
+      val y = ((bodyY - boundaries.minY)/sectorSize).toInt
+      matrix(y * sectorPrecision + x) += body
       this
     }
 
     def apply(x: Int, y: Int) = matrix(y * sectorPrecision + x)
 
     def combine(that: SectorMatrix): SectorMatrix = {
-      ???
+      this.matrix.par.zip(that.matrix).map(pair => {
+        val thisBuffer = pair._1
+        val thatBuffer = pair._2
+        thatBuffer.foreach(body => thisBuffer += body)
+      })
+      this
     }
 
     def toQuad(parallelism: Int): Quad = {
