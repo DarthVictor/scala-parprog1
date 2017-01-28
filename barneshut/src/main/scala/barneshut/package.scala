@@ -58,13 +58,17 @@ package object barneshut {
     val centerY: Float = (nw.centerY + sw.centerY) / 2
     val size: Float = nw.size + ne.size + sw.size + se.size
     val mass: Float = nw.mass + ne.mass + sw.mass + se.mass
-    val massX: Float = (nw.mass*nw.massX + ne.mass*ne.massX + sw.mass*sw.massX + se.mass*se.massX) / mass
-    val massY: Float = (nw.mass*nw.massY + ne.mass*ne.massY + sw.mass*sw.massY + se.mass*se.massY) / mass
+    val massX: Float =  if(mass > 0)
+                          (nw.mass*nw.massX + ne.mass*ne.massX + sw.mass*sw.massX + se.mass*se.massX) / mass
+                        else centerX
+    val massY: Float =  if(mass > 0)
+                          (nw.mass*nw.massY + ne.mass*ne.massY + sw.mass*sw.massY + se.mass*se.massY) / mass
+                        else centerY
     val total: Int = nw.total + ne.total + sw.total + se.total
 
     def insert(b: Body): Fork = {
-      if(b.x <= centerX){
-        if(b.y <= centerY){
+      if(b.x < centerX){
+        if(b.y < centerY){
           Fork(nw.insert(b), ne, sw, se)
         }
         else{
@@ -85,24 +89,31 @@ package object barneshut {
   case class Leaf(centerX: Float, centerY: Float, size: Float, bodies: Seq[Body])
   extends Quad {
       val mass  = bodies.foldLeft(0f)((sum, body) => body.mass + sum)
-      val massX = bodies.foldLeft(0f)((sum, body) => body.mass * body.x + sum)/mass
-      val massY = bodies.foldLeft(0f)((sum, body) => body.mass * body.y + sum)/mass
+      val massX = if(mass > 0)
+                      bodies.foldLeft(0f)((sum, body) => body.mass * body.x + sum)/mass
+                  else centerX
+      val massY = if(mass > 0)
+                      bodies.foldLeft(0f)((sum, body) => body.mass * body.y + sum)/mass
+                  else centerY
       val total: Int = bodies.length
+
       def insert(b: Body): Quad = {
-      val newBodies = bodies :+ b
-      if(size > minimumSize){
-        val halfSize = size/2
-        val emptyFork = Fork(
-          Empty(centerX - halfSize, centerY - halfSize, halfSize),
-          Empty(centerX - halfSize, centerY + halfSize, halfSize),
-          Empty(centerX + halfSize, centerY - halfSize, halfSize),
-          Empty(centerX + halfSize, centerY + halfSize, halfSize)
-        )
-        newBodies.foldLeft(emptyFork)((fork, body) => fork.insert(body))
-      }
-      else {
-        Leaf(centerX, centerY, size, newBodies)
-      }
+        val newBodies = bodies :+ b
+
+        if(size > minimumSize){
+          val halfSize = size/2
+          val quarterSize = size/4
+          val emptyFork = Fork(
+            Empty(centerX - quarterSize, centerY - quarterSize, halfSize),
+            Empty(centerX + quarterSize, centerY - quarterSize, halfSize),
+            Empty(centerX - quarterSize, centerY + quarterSize, halfSize),
+            Empty(centerX + quarterSize, centerY + quarterSize, halfSize)
+          )
+          newBodies.foldLeft(emptyFork)((fork, body) => fork.insert(body))
+        }
+        else {
+          Leaf(centerX, centerY, size, newBodies)
+        }
     }
   }
 
@@ -159,18 +170,17 @@ package object barneshut {
             addForce(body.mass, body.x, body.y)
           }
         case Fork(nw, ne, sw, se) =>
-          if (quad.size / distance(quad.centerX, quad.centerY, x, y) < theta){
-            addForce(quad.mass, quad.centerX, quad.centerY)
-          }
-          else{
-            addForce(nw.mass, nw.centerX, nw.centerY)
-            addForce(ne.mass, ne.centerX, ne.centerY)
-            addForce(sw.mass, sw.centerX, sw.centerY)
-            addForce(se.mass, se.centerX, se.centerY)
-          }
           // see if node is far enough from the body,
           // or recursion is needed
-
+          if (quad.size / distance(quad.massX, quad.massY, x, y) < theta){
+            addForce(quad.mass, quad.massX, quad.massY)
+          }
+          else{
+            traverse(nw)
+            traverse(ne)
+            traverse(sw)
+            traverse(se)
+          }
       }
 
       traverse(quad)
